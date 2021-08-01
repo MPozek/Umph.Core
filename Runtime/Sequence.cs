@@ -52,11 +52,6 @@ namespace Umph.Core
             return this;
         }
 
-        internal void Pause()
-        {
-            throw new System.NotImplementedException();
-        }
-
         /// <summary>
         /// Add an effect to the sequence so that it executes in parallel with the last added effect
         /// </summary>
@@ -86,16 +81,16 @@ namespace Umph.Core
 
         public void Play()
         {
-            _currentEffectIndex = 0;
+            Reset();
 
             PlayCurrentBatch();
         }
 
         public void Reset()
         {
-            foreach (var effect in _effects)
+            for (int i = _effects.Count - 1; i >= 0; i--)
             {
-                effect.Reset();
+                _effects[i].Reset();
             }
 
             for (int i = 0; i < _effects.Count; i++)

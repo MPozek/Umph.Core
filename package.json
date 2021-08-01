@@ -1,6 +1,6 @@
 {
   "name": "com.umph.core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "unity": "2020.3",
   "displayName":  "Umph Core",
   "description": "Core library for the Umph effect system."
