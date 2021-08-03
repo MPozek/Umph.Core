@@ -47,17 +47,25 @@ namespace Umph.Core
 
         private void Awake()
         {
-            // cache and build out the sequence of umph effects
-            _constructedSequence = new Sequence();
-            foreach (var effect in _effects)
+            Initialize();
+        }
+
+        public void Initialize(bool doForce = false)
+        {
+            if (doForce || _constructedSequence == null)
             {
-                if (effect.IsParallel)
+                // cache and build out the sequence of umph effects
+                _constructedSequence = new Sequence();
+                foreach (var effect in _effects)
                 {
-                    _constructedSequence.Parallel(effect.ConstructEffect(), effect.Delay);
-                }
-                else
-                {
-                    _constructedSequence.Append(effect.ConstructEffect(), effect.Delay);
+                    if (effect.IsParallel)
+                    {
+                        _constructedSequence.Parallel(effect.ConstructEffect(), effect.Delay);
+                    }
+                    else
+                    {
+                        _constructedSequence.Append(effect.ConstructEffect(), effect.Delay);
+                    }
                 }
             }
         }

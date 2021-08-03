@@ -79,7 +79,7 @@ namespace Umph.Editor
         {
             if (string.IsNullOrEmpty(property.managedReferenceFullTypename))
             {
-                EditorGUI.LabelField(rect, "can't resolve the type name");
+                EditorGUI.LabelField(rect, "Can't resolve the type name");
                 return;
             }
 
@@ -126,9 +126,28 @@ namespace Umph.Editor
             r.yMax = r.yMin + h;
             rect.yMin += r.height;
 
+
+            var substringIndex = name.IndexOf("ComponentEffect");
+            if (substringIndex < 0)
+            {
+                substringIndex = name.Length;
+            }
+
+            var displayName = "";
+            for (int j = 0; j < substringIndex; j++)
+            {
+                var c = name[j];
+                if (j > 0 && char.IsUpper(c))
+                {
+                    displayName += " ";
+                }
+
+                displayName += c;
+            }
+
             var labelRect = r;
             labelRect.xMax -= 25f;
-            property.isExpanded = EditorGUI.Foldout(labelRect, property.isExpanded, name);
+            property.isExpanded = EditorGUI.Foldout(labelRect, property.isExpanded, displayName);
 
             var parallelRect = r;
             parallelRect.xMin = parallelRect.xMax - 25f;

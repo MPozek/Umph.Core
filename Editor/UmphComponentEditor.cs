@@ -12,12 +12,15 @@ namespace Umph.Editor
     [CustomEditor(typeof(UmphComponent))]
     public class UmphComponentEditor : UnityEditor.Editor
     {
+        private UmphComponent _target;
         private GenericMenu _typeSelectMenu;
         private SerializedProperty _effectListProperty;
         private ReorderableList _listDrawer;
 
         private void OnEnable()
         {
+            _target = (UmphComponent) target;
+
             _effectListProperty = serializedObject.FindProperty("_effects");
             
             _listDrawer = new ReorderableList(serializedObject, _effectListProperty);
@@ -67,12 +70,22 @@ namespace Umph.Editor
 
             _listDrawer.DoLayoutList();
 
-            serializedObject.ApplyModifiedProperties();
+            if (serializedObject.ApplyModifiedProperties())
+            {
+                if (Application.isPlaying)
+                {
+                    if (_target.IsPlaying)
+                    {
+                        _target.Skip();
+                    }
+
+                    _target.Initialize(true);
+                }
+            }
         }
 
         private void InitializeAddDropdown()
         {
-
             _effectListProperty.InsertArrayElementAtIndex(0);
             var subtypeCache = new SubtypeCache(_effectListProperty.GetArrayElementAtIndex(0).managedReferenceFieldTypename);
             _effectListProperty.DeleteArrayElementAtIndex(0);
