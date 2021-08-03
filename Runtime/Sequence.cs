@@ -6,6 +6,145 @@ namespace Umph.Core
 {
     public class Sequence : IEffect
     {
+        private interface ISequenceEffectWrapper
+        {
+            bool IsCompleted { get; }
+            float Duration { get; }
+
+            void Play();
+
+            bool Update(float deltaTime);
+
+            void Skip();
+
+            void Reset();
+        }
+
+        private class SequenceEffectBatchWrapper : ISequenceEffectWrapper
+        {
+            public List<SequenceEffectWrapper> Effects;
+
+            public bool IsCompleted
+            {
+                get
+                {
+                    var isComplete = true;
+                    foreach (var subeffect in Effects)
+                    {
+                        isComplete = isComplete && subeffect.IsCompleted;
+                    }
+                    return isComplete;
+                }
+            }
+
+            public float Duration
+            {
+                get
+                {
+                    float d = 0f;
+                    foreach (var subeffect in Effects)
+                    {
+                        d += subeffect.Effect.Duration + subeffect.Delay;
+                    }
+                    return d;
+                }
+            }
+
+            public void Play()
+            {
+                foreach (var subeffect in Effects)
+                {
+                    subeffect.Play();
+                }
+            }
+
+            public bool Update(float deltaTime)
+            {
+                var isComplete = true;
+                foreach (var subeffect in Effects)
+                {
+                    isComplete = isComplete && subeffect.Update(deltaTime);
+                }
+                return isComplete;
+            }
+
+            public void Skip()
+            {
+                foreach (var subeffect in Effects)
+                {
+                    subeffect.Skip();
+                }
+            }
+
+            public void Reset()
+            {
+                foreach (var subeffect in Effects)
+                {
+                    subeffect.Reset();
+                }
+            }
+        }
+
+        private class SequenceEffectWrapper : ISequenceEffectWrapper
+        {
+            public float Delay;
+            public float DelayRemaining;
+
+            public IEffect Effect;
+
+            public bool IsCompleted
+            {
+                get
+                {
+                    return Effect.IsCompleted;
+                }
+            }
+
+            public float Duration
+            {
+                get
+                {
+                    return Effect.Duration;
+                }
+            }
+
+            public void Play()
+            {
+                if (DelayRemaining <= 0f)
+                {
+                    Effect.Play();
+                }
+            }
+
+            public bool Update(float deltaTime)
+            {
+                if (Effect.IsCompleted) return true;
+
+                if (DelayRemaining > 0f)
+                {
+                    DelayRemaining -= deltaTime;
+                }
+                else if (Effect.RequiresUpdates)
+                {
+                    Effect.Update(deltaTime);
+                }
+
+                return Effect.IsCompleted;
+            }
+
+            public void Skip()
+            {
+                DelayRemaining = 0f;
+                Effect.Skip();   
+            }
+
+            public void Reset()
+            {
+                Effect.Reset();
+                DelayRemaining = Delay;
+            }
+        }
+
         private struct SequenceMetaData
         {
             public bool IsParallel;
@@ -13,13 +152,22 @@ namespace Umph.Core
             public float DelayRemaining;
         }
 
-        private float _lastAddedEffectDuration;
         private int _currentEffectIndex;
 
-        private List<SequenceMetaData> _metaData;
-        private List<IEffect> _effects;
+        private List<ISequenceEffectWrapper> _effects;
 
-        public float Duration { get; private set; }
+        public float Duration 
+        { 
+            get
+            {
+                var d = 0f;
+                foreach (var effect in _effects)
+                {
+                    d += effect.Duration;
+                }
+                return d;
+            }
+        }
 
         public bool RequiresUpdates => true;
 
@@ -27,8 +175,7 @@ namespace Umph.Core
 
         public Sequence(int effectCapacity = 6)
         {
-            _metaData = new List<SequenceMetaData>(effectCapacity);
-            _effects = new List<IEffect>(effectCapacity);
+            _effects = new List<ISequenceEffectWrapper>(effectCapacity);
         }
 
         /// <summary>
@@ -38,16 +185,12 @@ namespace Umph.Core
         /// <param name="delay">The delay in seconds since the last effect batch</param>
         public Sequence Append(IEffect effect, float delay = 0f)
         {
-            _effects.Add(effect);
-            _metaData.Add(new SequenceMetaData
+            _effects.Add(new SequenceEffectWrapper
             {
-                IsParallel = false,
+                Effect = effect,
                 Delay = delay,
                 DelayRemaining = delay
             });
-
-            _lastAddedEffectDuration = delay + effect.Duration;
-            Duration += _lastAddedEffectDuration;
 
             return this;
         }
@@ -59,21 +202,38 @@ namespace Umph.Core
         /// <param name="delay">The delay in seconds since the start of the batch</param>
         public Sequence Parallel(IEffect effect, float delay = 0f)
         {
-            _effects.Add(effect);
-            _metaData.Add(new SequenceMetaData
+            if (_effects.Count == 0)
             {
-                IsParallel = true,
-                Delay = delay,
-                DelayRemaining = delay
-            });
+                Append(effect, delay);
+                return this;
+            }
 
-            // update sequence duration if required
-            var effectDuration = delay + effect.Duration;
-            if (effectDuration > _lastAddedEffectDuration)
+            var effectWrapper = _effects[_effects.Count - 1];
+            if (effectWrapper is SequenceEffectBatchWrapper batchWrapper)
             {
-                Duration -= _lastAddedEffectDuration;
-                _lastAddedEffectDuration = effectDuration;
-                Duration += _lastAddedEffectDuration;
+                batchWrapper.Effects.Add(new SequenceEffectWrapper
+                {
+                    Effect = effect,
+                    Delay = delay,
+                    DelayRemaining = delay
+                });
+            }
+            else
+            {
+                effectWrapper = new SequenceEffectBatchWrapper
+                {
+                    Effects = new List<SequenceEffectWrapper>() { 
+                        (SequenceEffectWrapper) effectWrapper, 
+                        new SequenceEffectWrapper
+                        {
+                            Effect = effect,
+                            Delay = delay,
+                            DelayRemaining = delay
+                        }
+                    }
+                };
+
+                _effects[_effects.Count - 1] = effectWrapper;
             }
 
             return this;
@@ -88,16 +248,9 @@ namespace Umph.Core
 
         public void Reset()
         {
-            for (int i = _effects.Count - 1; i >= 0; i--)
+            for (int i = Mathf.Min(_currentEffectIndex, _effects.Count - 1); i >= 0; i--)
             {
                 _effects[i].Reset();
-            }
-
-            for (int i = 0; i < _effects.Count; i++)
-            {
-                var data = _metaData[i];
-                data.DelayRemaining = data.Delay;
-                _metaData[i] = data;
             }
 
             _currentEffectIndex = 0;
@@ -117,25 +270,13 @@ namespace Umph.Core
         {
             if (IsCompleted) return;
 
-            UpdateCurrentBatch(deltaTime);
+            var current = _effects[_currentEffectIndex];
 
-            var didChangeEffectIndex = false;
-            while (_currentEffectIndex < _effects.Count && _effects[_currentEffectIndex].IsCompleted)
+            if (current.IsCompleted || current.Update(deltaTime))
             {
                 _currentEffectIndex++;
-                didChangeEffectIndex = true;
-            }
 
-            if (didChangeEffectIndex && !IsCompleted)
-            {
-                // did we transition onto the next batch?
-                // this is the same as head effect not being parallel
-                var currentHeadEffectData = _metaData[_currentEffectIndex];
-                
-                if (currentHeadEffectData.IsParallel == false)
-                {
-                    PlayCurrentBatch();
-                }
+                PlayCurrentBatch();
             }
         }
 
@@ -144,51 +285,9 @@ namespace Umph.Core
         /// </summary>
         private void PlayCurrentBatch()
         {
-            for (int i = _currentEffectIndex; i < _effects.Count; i++)
+            if (_currentEffectIndex < _effects.Count)
             {
-                var effectData = _metaData[i];
-                if (i > _currentEffectIndex && !effectData.IsParallel)
-                    return;
-
-                if (effectData.DelayRemaining <= 0f)
-                {
-                    _effects[_currentEffectIndex].Play();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Decrements delays and updates effects that need updating in the current batch
-        /// </summary>
-        private void UpdateCurrentBatch(float deltaTime)
-        {
-            for (int i = _currentEffectIndex; i < _effects.Count; i++)
-            {
-                var effectData = _metaData[i];
-                if (i > _currentEffectIndex && !effectData.IsParallel)
-                    return;
-
-                var effect = _effects[i];
-                if (effectData.DelayRemaining > 0f)
-                {
-                    effectData.DelayRemaining -= deltaTime;
-                    _metaData[i] = effectData;
-
-                    if (effectData.DelayRemaining > 0f)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        effect.Play();
-                    }
-                }
-
-                if (effect.RequiresUpdates && !effect.IsCompleted)
-                {
-                    effect.Update(deltaTime);
-                }
-
+                _effects[_currentEffectIndex].Play();
             }
         }
     }
