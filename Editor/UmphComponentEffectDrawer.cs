@@ -152,7 +152,8 @@ namespace Umph.Editor
             var parallelRect = r;
             parallelRect.xMin = parallelRect.xMax - 25f;
 
-            isParallelProperty.boolValue = EditorGUI.ToggleLeft(parallelRect, "P", isParallelProperty.boolValue);
+            var content = new GUIContent("P", "Parallel");
+            isParallelProperty.boolValue = EditorGUI.ToggleLeft(parallelRect, content, isParallelProperty.boolValue);
         }
 
         private void DrawBaseProperties(ref Rect rect, SerializedProperty property)

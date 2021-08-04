@@ -12,6 +12,8 @@ namespace Umph.Core
 
         public bool IsPlaying => _isPlaying;
 
+        public Sequence Sequence => _constructedSequence;
+
         [SerializeField, Tooltip("When true, will start playing the sequence on Unity's Start callback")]
         private bool _playOnStart;
 

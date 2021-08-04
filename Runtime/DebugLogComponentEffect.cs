@@ -1,5 +1,6 @@
 ﻿namespace Umph.Core
 {
+
     [System.Serializable]
     public class DebugLogComponentEffect : UmphComponentEffect
     {
@@ -18,6 +19,7 @@
             public bool RequiresUpdates => false;
 
             public bool IsCompleted { get; private set; }
+            public bool IsPlaying { get; private set; }
 
             public DebugLogEffect() : this("") { }
 
@@ -28,18 +30,22 @@
 
             public void Play()
             {
+                IsPlaying = true;
                 UnityEngine.Debug.Log(_message);
+                IsPlaying = false;
                 IsCompleted = true;
             }
 
             public void Reset()
             {
                 IsCompleted = false;
+                IsPlaying = false;
             }
 
             public void Skip()
             {
                 Play();
+                IsPlaying = false;
             }
 
             public void Update(float deltaTime)

@@ -18,6 +18,7 @@
             public bool RequiresUpdates => false;
 
             public bool IsCompleted { get; private set; }
+            public bool IsPlaying { get; private set; }
 
             public CallbackEffect(UnityEngine.Events.UnityEvent callback)
             {
@@ -26,18 +27,22 @@
 
             public void Play()
             {
+                IsPlaying = true;
                 _callback.Invoke();
+                IsPlaying = false;
                 IsCompleted = true;
             }
 
             public void Reset()
             {
                 IsCompleted = false;
+                IsPlaying = false;
             }
 
             public void Skip()
             {
                 Play();
+                IsPlaying = false;
             }
 
             public void Update(float deltaTime)

@@ -9,6 +9,7 @@ namespace Umph.Core
 
         private List<ISequenceEffectWrapper> _effects;
 
+        public int CurrentEffectIndex => _currentEffectIndex;
         public float Duration 
         { 
             get
@@ -25,6 +26,7 @@ namespace Umph.Core
         public bool RequiresUpdates => true;
 
         public bool IsCompleted => _currentEffectIndex >= _effects.Count;
+        public bool IsPlaying { get; private set; }
 
         public Sequence()
         {
@@ -97,6 +99,7 @@ namespace Umph.Core
         {
             Reset();
 
+            IsPlaying = true;
             PlayCurrentBatch();
         }
 
@@ -108,6 +111,7 @@ namespace Umph.Core
             }
 
             _currentEffectIndex = 0;
+            IsPlaying = false;
         }
 
         public void Skip()
@@ -118,6 +122,7 @@ namespace Umph.Core
             }
 
             _currentEffectIndex = _effects.Count;
+            IsPlaying = false;
         }
 
         public void Update(float deltaTime)
@@ -142,6 +147,10 @@ namespace Umph.Core
             if (_currentEffectIndex < _effects.Count)
             {
                 _effects[_currentEffectIndex].Play();
+            }
+            else
+            {
+                IsPlaying = false;
             }
         }
     }

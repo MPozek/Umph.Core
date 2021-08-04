@@ -5,6 +5,7 @@
         float Duration { get; }
         bool RequiresUpdates { get; }
         bool IsCompleted { get; }
+        bool IsPlaying { get; }
 
         /// <summary>
         /// Starts playback of the effect

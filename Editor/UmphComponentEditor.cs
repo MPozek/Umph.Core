@@ -144,6 +144,16 @@ namespace Umph.Editor
 
         private void DrawListElementBackground(Rect rect, int index, bool isActive, bool isFocused)
         {
+            if (Application.isPlaying)
+            {
+                var seq = _target.Sequence;
+                if (index == seq.CurrentEffectIndex && seq.IsPlaying)
+                {
+                    EditorGUI.DrawRect(rect, new Color(0.3f, 0.35f, 0.2f));
+                    return;
+                }
+            }
+
             if (isActive || isFocused)
             {
                 EditorGUI.DrawRect(rect, new Color(0.3f, 0.3f, 0.35f));

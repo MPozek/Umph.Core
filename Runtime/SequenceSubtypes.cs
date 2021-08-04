@@ -143,8 +143,11 @@ namespace Umph.Core
 
             public void Skip()
             {
-                DelayRemaining = 0f;
-                Effect.Skip();
+                if (!Effect.IsCompleted)
+                {
+                    DelayRemaining = 0f;
+                    Effect.Skip();
+                }
             }
 
             public void Reset()
