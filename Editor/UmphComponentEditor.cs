@@ -86,7 +86,7 @@ namespace Umph.Editor
 
             serializedObject.Update();
 
-            var playOnStart = serializedObject.FindProperty("_playOnStart");
+            var playOnStart = serializedObject.FindProperty("_settings");
             EditorGUILayout.PropertyField(playOnStart);
 
             _listDrawer.DoLayoutList();

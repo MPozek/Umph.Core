@@ -9,6 +9,24 @@ namespace Umph.Core
     /// </summary>
     public class UmphComponent : MonoBehaviour
     {
+        public enum AutoPlayCallback
+        {
+            None, Start, Enable
+        }
+
+        [System.Serializable]
+        public class Settings
+        {
+            public AutoPlayCallback AutoPlay = AutoPlayCallback.Start;
+            public bool ResetOnDisable = true;
+            public bool PauseOnDisable = true;
+
+            /* TODO :: have to add the option to run effects without timescale as well
+            [SerializeField, Tooltip("When true, will use unscaled deltaTime to run effects")]
+            private bool _useUnscaledTime;
+            */
+        }
+
         private Sequence _constructedSequence;
 
         public bool IsPlaying => _isPlaying;
@@ -16,13 +34,8 @@ namespace Umph.Core
 
         public Sequence Sequence => _constructedSequence;
 
-        [SerializeField, Tooltip("When true, will start playing the sequence on Unity's Start callback")]
-        private bool _playOnStart;
-
-        /* TODO :: have to add the option to run effects without timescale as well
-        [SerializeField, Tooltip("When true, will use unscaled deltaTime to run effects")]
-        private bool _useUnscaledTime;
-        */
+        [SerializeField]
+        private Settings _settings;
 
         [SerializeField, SerializeReference] private List<UmphComponentEffect> _effects = new List<UmphComponentEffect>();
 
@@ -94,18 +107,27 @@ namespace Umph.Core
 
         private void OnDisable()
         {
-            if (_isPlaying)
+            if (_settings.PauseOnDisable || _isPlaying)
             {
                 Pause();
             }
-            if (_constructedSequence != null)
+            if (_settings.ResetOnDisable && _constructedSequence != null)
                 _constructedSequence.Reset();
         }
 
         private void Start()
         {
             // start playback if required
-            if (_playOnStart)
+            if (_settings.AutoPlay == AutoPlayCallback.Start)
+            {
+                Play();
+            }
+        }
+
+        private void OnEnable()
+        {
+            // start playback if required
+            if (_settings.AutoPlay == AutoPlayCallback.Enable)
             {
                 Play();
             }
