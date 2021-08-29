@@ -3,6 +3,8 @@
 Umph is a tool that allows for sequencing of different effects (like tweens and callbacks) directly from it's component.
 It aims to offer an easy to use interface for adding simple animations and polish to your game and to be designer friendly while doing it.
 
+![umph_usage](https://user-images.githubusercontent.com/15526815/131263391-242563a5-a7d8-4ab8-9463-5be80d1b23dc.gif)
+
 ## How to use Umph
 
 It's simple, you add the UmphComponent component to any GameObject you'd like and add different premade and configurable effects to your sequence.
@@ -21,7 +23,15 @@ For more Effect types check out the currently available extensions:
 
 - [DOTween extension](https://github.com/MPozek/Umph.DOTween)
 
-Or...
+## Instalation
+1. open the Unity Package Manager (Windows/Package Manager)
+2. click the add package button and choose the "add package from git URL" option
+
+![image](https://user-images.githubusercontent.com/15526815/130480877-e7b244be-7a24-4bf7-b008-ca214f090ba5.png)
+
+3. paste the git url `https://github.com/MPozek/Umph.Core.git` and click Add
+
+That's it! Unity should handle the rest of downloading and adding Pickle to your project.
 
 ## How do I Extend Umph?
 
