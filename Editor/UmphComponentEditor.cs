@@ -69,9 +69,6 @@ namespace Umph.Editor
 
         private void InitializeAddDropdown()
         {
-            _effectListProperty.InsertArrayElementAtIndex(0);
-            _effectListProperty.DeleteArrayElementAtIndex(0);
-
             _typeSelectMenu = new UmphComponentDropdown(_componentDisplayData, new AdvancedDropdownState());
             _typeSelectMenu.OnItemSelected += AddEffect;
         }
@@ -172,6 +169,9 @@ namespace Umph.Editor
 
         private void DrawListElementBackground(Rect rect, int index, bool isActive, bool isFocused)
         {
+            if (index < 0 || index >= _effectListProperty.arraySize)
+                return;
+
             if (Application.isPlaying)
             {
                 var seq = _target.Sequence;
@@ -187,9 +187,7 @@ namespace Umph.Editor
                 EditorGUI.DrawRect(rect, new Color(0.2f, 0.2f, 0.2f));
             }
 
-            if (index >= _effectListProperty.arraySize)
-                return;
-
+            Debug.LogError(index);
             var isParallel = _effectListProperty.GetArrayElementAtIndex(index).FindPropertyRelative("Settings.IsParallel").boolValue;
             var hasPreviousElement = index > 0;
             var nextElementIsParallel =
