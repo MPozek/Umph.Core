@@ -13,6 +13,11 @@
         void Play();
 
         /// <summary>
+        /// Pauses the playback of the effect
+        /// </summary>
+        void Pause();
+
+        /// <summary>
         /// Updates the effect state by frame delta time
         /// </summary>
         /// <param name="deltaTime">Time passed since last update</param>

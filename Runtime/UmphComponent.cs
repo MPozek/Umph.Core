@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace Umph.Core
 {
+
     /// <summary>
     /// Core component of the Umph plugin, used to edit and run Umph Sequences of effects.
     /// </summary>
@@ -11,6 +12,7 @@ namespace Umph.Core
         private Sequence _constructedSequence;
 
         public bool IsPlaying => _isPlaying;
+        public bool IsCompleted => _constructedSequence != null && _constructedSequence.IsCompleted;
 
         public Sequence Sequence => _constructedSequence;
 
@@ -29,13 +31,31 @@ namespace Umph.Core
         /// <summary>
         /// 
         /// </summary>
-        public void Play()
+        public void Play(bool reset = false)
         {
-            if (_isPlaying)
-                return;
+            if (reset)
+            {
+                _constructedSequence.Reset();
+            }
+            else
+            {
+                if (_isPlaying)
+                    return;
+            }
 
             _isPlaying = true;
             _constructedSequence.Play();
+        }
+
+        public void DoReset()
+        {
+            _constructedSequence.Reset();
+        }
+
+        public void Pause()
+        {
+            _isPlaying = false;
+            _constructedSequence.Pause();
         }
 
         public void Skip()
@@ -45,11 +65,6 @@ namespace Umph.Core
                 _constructedSequence.Skip();
                 _isPlaying = false;
             }
-        }
-
-        private void Awake()
-        {
-            Initialize();
         }
 
         public void Initialize(bool doForce = false)
@@ -70,6 +85,21 @@ namespace Umph.Core
                     }
                 }
             }
+        }
+
+        private void Awake()
+        {
+            Initialize();
+        }
+
+        private void OnDisable()
+        {
+            if (_isPlaying)
+            {
+                Pause();
+            }
+            if (_constructedSequence != null)
+                _constructedSequence.Reset();
         }
 
         private void Start()

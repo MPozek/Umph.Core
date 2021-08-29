@@ -13,9 +13,12 @@ namespace Umph.Core
         private interface ISequenceEffectWrapper
         {
             bool IsCompleted { get; }
+            bool IsPlaying { get; }
             float Duration { get; }
 
             void Play();
+
+            void Pause();
 
             bool Update(float deltaTime);
 
@@ -41,6 +44,11 @@ namespace Umph.Core
                 }
             }
 
+            public bool IsPlaying
+            {
+                get; private set;
+            }
+
             public float Duration
             {
                 get
@@ -56,9 +64,19 @@ namespace Umph.Core
 
             public void Play()
             {
+                IsPlaying = true;
                 foreach (var subeffect in Effects)
                 {
                     subeffect.Play();
+                }
+            }
+
+            public void Pause()
+            {
+                IsPlaying = false;
+                foreach (var subeffect in Effects)
+                {
+                    subeffect.Pause();
                 }
             }
 
@@ -74,6 +92,7 @@ namespace Umph.Core
 
             public void Skip()
             {
+                IsPlaying = false;
                 foreach (var subeffect in Effects)
                 {
                     subeffect.Skip();
@@ -104,6 +123,11 @@ namespace Umph.Core
                 }
             }
 
+            public bool IsPlaying
+            {
+                get; private set;
+            }
+
             public float Duration
             {
                 get
@@ -114,10 +138,17 @@ namespace Umph.Core
 
             public void Play()
             {
+                IsPlaying = true;
                 if (DelayRemaining <= 0f)
                 {
                     Effect.Play();
                 }
+            }
+
+            public void Pause()
+            {
+                IsPlaying = false;
+                Effect.Pause();
             }
 
             public bool Update(float deltaTime)
@@ -143,6 +174,7 @@ namespace Umph.Core
 
             public void Skip()
             {
+                IsPlaying = false;
                 if (!Effect.IsCompleted)
                 {
                     DelayRemaining = 0f;

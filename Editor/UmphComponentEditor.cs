@@ -2,20 +2,29 @@
 
 using UnityEditor;
 using UnityEditorInternal;
-using System.Linq;
 using System;
 
 using Umph.Core;
+using UnityEditor.IMGUI.Controls;
+using System.Linq;
 
 namespace Umph.Editor
 {
+
     [CustomEditor(typeof(UmphComponent))]
     public class UmphComponentEditor : UnityEditor.Editor
     {
+        private Rect _listRect;
+
         private UmphComponent _target;
-        private GenericMenu _typeSelectMenu;
+        private UmphComponentDropdown _typeSelectMenu;
         private SerializedProperty _effectListProperty;
         private ReorderableList _listDrawer;
+
+        private UmphComponentMenu[] _componentDisplayData;
+
+        private int _deleteElementIndex;
+        private SubtypeCache _subtypeCache;
 
         private void OnEnable()
         {
@@ -24,6 +33,8 @@ namespace Umph.Editor
             _effectListProperty = serializedObject.FindProperty("_effects");
             
             _listDrawer = new ReorderableList(serializedObject, _effectListProperty);
+
+            InitializeSubtypeCache();
 
             InitializeAddDropdown();
 
@@ -36,31 +47,44 @@ namespace Umph.Editor
             _listDrawer.drawElementCallback = DrawListElement;
 
             _listDrawer.displayAdd = true;
-            _listDrawer.onAddDropdownCallback = DisplayAddDropdown;
+            _listDrawer.onAddDropdownCallback = (rect, list) => _typeSelectMenu.Show(_listRect);
+            _listDrawer.displayRemove = false;
+        }
+
+        private void InitializeSubtypeCache()
+        {
+            _subtypeCache = new SubtypeCache(typeof(UmphComponentEffect));
+            _componentDisplayData = new UmphComponentMenu[_subtypeCache.Count];
+            for (int i = 0; i < _subtypeCache.Count; i++)
+            {
+                var t = _subtypeCache.GetSubtypeAt(i);
+                var displayData = (UmphComponentMenu) t.GetCustomAttributes(typeof(UmphComponentMenu), false).FirstOrDefault();
+                if (displayData == null)
+                {
+                    displayData = new UmphComponentMenu(t.Name.Replace("ComponentEffect", ""), t.FullName.Replace('.', '/').Replace("ComponentEffect", ""));
+                }
+                _componentDisplayData[i] = displayData;
+            }
+        }
+
+        private void InitializeAddDropdown()
+        {
+            _effectListProperty.InsertArrayElementAtIndex(0);
+            _effectListProperty.DeleteArrayElementAtIndex(0);
+
+            _typeSelectMenu = new UmphComponentDropdown(_componentDisplayData, new AdvancedDropdownState());
+            _typeSelectMenu.OnItemSelected += AddEffect;
         }
 
         public override void OnInspectorGUI()
         {
-            if (Application.isPlaying)
+            DrawPlayControls();
+
+            if (_deleteElementIndex >= 0)
             {
-                EditorGUILayout.BeginHorizontal();
-
-                if (((UmphComponent)target).IsPlaying)
-                {
-                    if (GUILayout.Button("Skip"))
-                    {
-                        ((UmphComponent)target).Skip();
-                    }
-                }
-                else
-                {
-                    if (GUILayout.Button("Play"))
-                    {
-                        ((UmphComponent)target).Play();
-                    }
-                }
-
-                EditorGUILayout.EndHorizontal();
+                _effectListProperty.DeleteArrayElementAtIndex(_deleteElementIndex);
+                _effectListProperty.serializedObject.ApplyModifiedProperties();
+                _deleteElementIndex = -1;
             }
 
             serializedObject.Update();
@@ -69,6 +93,9 @@ namespace Umph.Editor
             EditorGUILayout.PropertyField(playOnStart);
 
             _listDrawer.DoLayoutList();
+
+            if (Event.current.type == EventType.Repaint)
+                _listRect = GUILayoutUtility.GetLastRect();
 
             if (serializedObject.ApplyModifiedProperties())
             {
@@ -84,51 +111,52 @@ namespace Umph.Editor
             }
         }
 
-        private void InitializeAddDropdown()
+        private void DrawPlayControls()
         {
-            _effectListProperty.InsertArrayElementAtIndex(0);
-            var subtypeCache = new SubtypeCache(_effectListProperty.GetArrayElementAtIndex(0).managedReferenceFieldTypename);
-            _effectListProperty.DeleteArrayElementAtIndex(0);
-
-            _typeSelectMenu = new GenericMenu();
-
-            for (int i = 0; i < subtypeCache.Count; i++)
+            if (Application.isPlaying)
             {
-                var (name, type) = subtypeCache.GetSubtypeAt(i);
+                EditorGUILayout.BeginHorizontal();
 
-                var substringIndex = name.IndexOf("ComponentEffect");
-                if (substringIndex < 0)
+                if (((UmphComponent)target).IsPlaying)
                 {
-                    substringIndex = name.Length;
-                }
-
-                var displayName = "";
-                for (int j = 0; j < substringIndex; j++)
-                {
-                    var c = name[j];
-                    if (j > 0 && char.IsUpper(c))
+                    if (GUILayout.Button("Pause"))
                     {
-                        displayName += " ";
+                        ((UmphComponent)target).Pause();
                     }
 
-                    displayName += c;
+                    if (GUILayout.Button("Skip"))
+                    {
+                        ((UmphComponent)target).Skip();
+                    }
+                }
+                else
+                {
+                    GUI.enabled = !((UmphComponent)target).IsCompleted;
+
+                    if (GUILayout.Button("Play"))
+                    {
+                        ((UmphComponent)target).Play();
+                    }
+
+                    GUI.enabled = true;
                 }
 
-                _typeSelectMenu.AddItem(new GUIContent(displayName), false, AddEffect, type);
+                if (GUILayout.Button("Reset"))
+                {
+                    ((UmphComponent)target).DoReset();
+                }
+
+                EditorGUILayout.EndHorizontal();
             }
         }
 
-        private void DisplayAddDropdown(Rect buttonRect, ReorderableList list)
-        {
-            _typeSelectMenu.DropDown(buttonRect);
-        }
-
-        private void AddEffect(System.Object type)
+        private void AddEffect(int typeIndex)
         {
             var index = _effectListProperty.arraySize;
             _effectListProperty.InsertArrayElementAtIndex(index);
-            
-            var instance = (UmphComponentEffect) Activator.CreateInstance((Type)type);
+
+            var type = _subtypeCache.GetSubtypeAt(typeIndex);
+            var instance = (UmphComponentEffect) Activator.CreateInstance(type);
             instance.EDITOR_Initialize(((Component)target).gameObject);
 
             _effectListProperty.GetArrayElementAtIndex(index).managedReferenceValue = instance;
@@ -147,64 +175,69 @@ namespace Umph.Editor
             if (Application.isPlaying)
             {
                 var seq = _target.Sequence;
-                if (index == seq.CurrentEffectIndex && seq.IsPlaying)
+                if (seq != null && index == seq.CurrentEffectIndex && seq.IsPlaying)
                 {
                     EditorGUI.DrawRect(rect, new Color(0.3f, 0.35f, 0.2f));
                     return;
                 }
             }
 
-            if (isActive || isFocused)
-            {
-                EditorGUI.DrawRect(rect, new Color(0.3f, 0.3f, 0.35f));
-            }
-            else if (index % 2 == 1)
+            if (index % 2 == 1)
             {
                 EditorGUI.DrawRect(rect, new Color(0.2f, 0.2f, 0.2f));
+            }
+
+            if (index >= _effectListProperty.arraySize)
+                return;
+
+            var isParallel = _effectListProperty.GetArrayElementAtIndex(index).FindPropertyRelative("Settings.IsParallel").boolValue;
+            var hasPreviousElement = index > 0;
+            var nextElementIsParallel =
+                index + 1 < _effectListProperty.arraySize
+                && _effectListProperty.GetArrayElementAtIndex(index + 1).FindPropertyRelative("Settings.IsParallel").boolValue;
+
+            if ((isParallel && hasPreviousElement) || nextElementIsParallel)
+            {
+                EditorGUI.DrawRect(
+                    Rect.MinMaxRect(
+                        rect.xMin + 22f,
+                        isParallel && hasPreviousElement ? rect.yMin : (rect.yMin + EditorGUIUtility.singleLineHeight * 0.5f), 
+                        rect.xMin + 25f, 
+                        nextElementIsParallel ? rect.yMax : (rect.yMin + EditorGUIUtility.singleLineHeight * 0.5f)
+                    ), 
+                    new Color32(58, 121, 197, 255) // unity blue
+                );
             }
         }
 
         private void DrawListElement(Rect rect, int index, bool isActive, bool isFocused)
         {
-            var property = _effectListProperty.GetArrayElementAtIndex(index);
+            var buttonRect = Rect.MinMaxRect(rect.xMax - 50f, rect.yMin, rect.xMax, rect.yMin + EditorGUIUtility.singleLineHeight);
+            if (GUI.Button(buttonRect, "Delete", EditorStyles.miniButton))
+            {
+                Event.current.Use();
+                _deleteElementIndex = index;
+                Repaint();
+            }
+            
+            if (index < _effectListProperty.arraySize)
+            {
+                const float INDENT = 20f;
+                var property = _effectListProperty.GetArrayElementAtIndex(index);
+                rect.width -= INDENT;
+                rect.center += Vector2.right * INDENT;
 
-            EditorGUI.PropertyField(rect, property, true);
+                var managedType = FindManagedTypeFromName(property.managedReferenceFullTypename);
+                var typeIndex = _subtypeCache.GetTypeIndex(managedType);
+                EditorGUI.PropertyField(rect, property, new GUIContent(_componentDisplayData[typeIndex].Name), true);
+            }
         }
 
-        public class SubtypeCache
+        private static Type FindManagedTypeFromName(string fullTypename)
         {
-            public class SubtypesInfo
-            {
-                public Type[] subtypes;
-                public string[] displayNames;
-            }
-
-            private readonly string _baseTypeName;
-            private readonly Type _baseType;
-            private readonly SubtypesInfo _subtypes;
-
-            public int Count => _subtypes.displayNames.Length;
-
-            public (string, Type) GetSubtypeAt(int index)
-            {
-                return (_subtypes.displayNames[index], _subtypes.subtypes[index]);
-            }
-
-            /// <summary>
-            /// 
-            /// </summary>
-            /// <param name="baseTypeName">The property type name as written in SerializedProperty.managedReferenceFieldTypename</param>
-            public SubtypeCache(string baseTypeName)
-            {
-                _baseTypeName = baseTypeName;
-
-                var words = baseTypeName.Split(' ');
-                _baseType = AppDomain.CurrentDomain.GetAssemblies().Where(assembly => assembly.GetName().Name == words.First()).SingleOrDefault().GetType(words.Last());
-
-                _subtypes = new SubtypesInfo();
-                _subtypes.subtypes = TypeCache.GetTypesDerivedFrom(_baseType).Where(t => typeof(UnityEngine.Object).IsAssignableFrom(t) == false && t.IsAbstract == false).ToArray();
-                _subtypes.displayNames = _subtypes.subtypes.Select(t => t.FullName.Replace("Umph.", "").Replace('.', '/')).ToArray();
-            }
+            var words = fullTypename.Split(' ');
+            var t = AppDomain.CurrentDomain.GetAssemblies().Where(assembly => assembly.GetName().Name == words.First()).SingleOrDefault().GetType(words.Last());
+            return t;
         }
     }
 }

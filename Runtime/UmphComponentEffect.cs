@@ -3,8 +3,16 @@
     [System.Serializable]
     public abstract class UmphComponentEffect
     {
-        public float Delay;
-        public bool IsParallel;
+        [System.Serializable]
+        public struct BasicEffectSettings
+        {
+            public float Delay;
+            public bool IsParallel;
+        }
+
+        public BasicEffectSettings Settings;
+        public float Delay => Settings.Delay;
+        public bool IsParallel => Settings.IsParallel;
 
 #if UNITY_EDITOR
         public virtual void EDITOR_Initialize(UnityEngine.GameObject ownerObject) { }

@@ -1,6 +1,7 @@
 ﻿namespace Umph.Core
 {
     [System.Serializable]
+    [UmphComponentMenu("Callback", "Core/Callback")]
     public class CallbackComponentEffect : UmphComponentEffect
     {
         public UnityEngine.Events.UnityEvent Callback = new UnityEngine.Events.UnityEvent();
@@ -27,10 +28,18 @@
 
             public void Play()
             {
-                IsPlaying = true;
-                _callback.Invoke();
+                if (!IsPlaying)
+                {
+                    IsPlaying = true;
+                    _callback.Invoke();
+                    IsPlaying = false;
+                    IsCompleted = true;
+                }
+            }
+
+            public void Pause()
+            {
                 IsPlaying = false;
-                IsCompleted = true;
             }
 
             public void Reset()

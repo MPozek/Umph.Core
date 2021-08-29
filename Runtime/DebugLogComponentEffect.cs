@@ -2,6 +2,7 @@
 {
 
     [System.Serializable]
+    [UmphComponentMenu("Log", "Core/Log")]
     public class DebugLogComponentEffect : UmphComponentEffect
     {
         public string Message;
@@ -34,6 +35,11 @@
                 UnityEngine.Debug.Log(_message);
                 IsPlaying = false;
                 IsCompleted = true;
+            }
+
+            public void Pause()
+            {
+                IsPlaying = false;
             }
 
             public void Reset()

@@ -97,10 +97,26 @@ namespace Umph.Core
 
         public void Play()
         {
-            Reset();
+            if (IsPlaying)
+                return;
+
+            if (IsCompleted)
+            {
+                _currentEffectIndex = 0;
+            }
 
             IsPlaying = true;
             PlayCurrentBatch();
+        }
+
+        public void Pause()
+        {
+            if (IsPlaying)
+            {
+                var effect = _effects[_currentEffectIndex];
+                effect.Pause();
+                IsPlaying = false;
+            }
         }
 
         public void Reset()
@@ -111,14 +127,18 @@ namespace Umph.Core
             }
 
             _currentEffectIndex = 0;
-            IsPlaying = false;
+
+            if (IsPlaying)
+            {
+                PlayCurrentBatch();
+            }
         }
 
         public void Skip()
         {
-            foreach (var effect in _effects)
+            for (int i = _currentEffectIndex; i < _effects.Count; i++)
             {
-                effect.Skip();
+                _effects[i].Skip();
             }
 
             _currentEffectIndex = _effects.Count;
@@ -131,7 +151,7 @@ namespace Umph.Core
 
             var current = _effects[_currentEffectIndex];
 
-            if (current.IsCompleted || current.Update(deltaTime))
+            if (current.Update(deltaTime))
             {
                 _currentEffectIndex++;
 
