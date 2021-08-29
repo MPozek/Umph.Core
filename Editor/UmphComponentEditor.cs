@@ -187,7 +187,6 @@ namespace Umph.Editor
                 EditorGUI.DrawRect(rect, new Color(0.2f, 0.2f, 0.2f));
             }
 
-            Debug.LogError(index);
             var isParallel = _effectListProperty.GetArrayElementAtIndex(index).FindPropertyRelative("Settings.IsParallel").boolValue;
             var hasPreviousElement = index > 0;
             var nextElementIsParallel =
