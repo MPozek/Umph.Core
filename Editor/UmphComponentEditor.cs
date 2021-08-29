@@ -23,7 +23,7 @@ namespace Umph.Editor
 
         private UmphComponentMenu[] _componentDisplayData;
 
-        private int _deleteElementIndex;
+        private int _deleteElementIndex = -1;
         private SubtypeCache _subtypeCache;
 
         private void OnEnable()
