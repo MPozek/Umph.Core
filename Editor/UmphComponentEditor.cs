@@ -128,14 +128,10 @@ namespace Umph.Editor
                 }
                 else
                 {
-                    GUI.enabled = !((UmphComponent)target).IsCompleted;
-
                     if (GUILayout.Button("Play"))
                     {
                         ((UmphComponent)target).Play();
                     }
-
-                    GUI.enabled = true;
                 }
 
                 if (GUILayout.Button("Reset"))
@@ -158,7 +154,18 @@ namespace Umph.Editor
 
             _effectListProperty.GetArrayElementAtIndex(index).managedReferenceValue = instance;
 
-            serializedObject.ApplyModifiedProperties();
+            if (serializedObject.ApplyModifiedProperties())
+            {
+                if (Application.isPlaying)
+                {
+                    if (_target.IsPlaying)
+                    {
+                        _target.Skip();
+                    }
+
+                    _target.Initialize(true);
+                }
+            }
         }
 
         private float GetListElementHeight(int index)

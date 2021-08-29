@@ -20,6 +20,7 @@ namespace Umph.Core
             public AutoPlayCallback AutoPlay = AutoPlayCallback.Start;
             public bool ResetOnDisable = true;
             public bool PauseOnDisable = true;
+            public bool AutoResetOnComplete = false;
 
             /* TODO :: have to add the option to run effects without timescale as well
             [SerializeField, Tooltip("When true, will use unscaled deltaTime to run effects")]
@@ -53,7 +54,13 @@ namespace Umph.Core
             else
             {
                 if (_isPlaying)
+                {
                     return;
+                }
+                else if (IsCompleted)
+                {
+                    Initialize(true);
+                }
             }
 
             _isPlaying = true;
@@ -146,6 +153,11 @@ namespace Umph.Core
 
             // run update to reduce delay counters and update the manually updating effects
             _constructedSequence.Update(Time.deltaTime);
+            if (_settings.AutoResetOnComplete && _constructedSequence.IsCompleted)
+            {
+                _constructedSequence.Pause();
+                _constructedSequence.Reset();
+            }
         }
     }
 }
