@@ -179,19 +179,20 @@ namespace Umph.Editor
             if (index < 0 || index >= _effectListProperty.arraySize)
                 return;
 
-            if (Application.isPlaying)
-            {
-                var seq = _target.Sequence;
-                if (seq != null && index == seq.CurrentEffectIndex && seq.IsPlaying)
-                {
-                    EditorGUI.DrawRect(rect, new Color(0.3f, 0.35f, 0.2f));
-                    return;
-                }
-            }
-
             if (index % 2 == 1)
             {
                 EditorGUI.DrawRect(rect, new Color(0.2f, 0.2f, 0.2f));
+            }
+
+            if (Application.isPlaying)
+            {
+                var seq = _target.Sequence;
+                if (seq != null && seq.IsPlaying)
+                {
+                    var effect = _target.GetEffect(index);
+                    if (effect != null && effect.IsPlaying)
+                        EditorGUI.DrawRect(rect, new Color(0.3f, 0.35f, 0.2f));
+                }
             }
 
             var isParallel = _effectListProperty.GetArrayElementAtIndex(index).FindPropertyRelative("Settings.IsParallel").boolValue;

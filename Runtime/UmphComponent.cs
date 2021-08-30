@@ -41,6 +41,7 @@ namespace Umph.Core
         [SerializeField, SerializeReference] private List<UmphComponentEffect> _effects = new List<UmphComponentEffect>();
 
         private bool _isPlaying = false;
+        private List<IEffect> _effectInstances = new List<IEffect>();
 
         /// <summary>
         /// 
@@ -91,17 +92,21 @@ namespace Umph.Core
         {
             if (doForce || _constructedSequence == null)
             {
+                _effectInstances.Clear();
+
                 // cache and build out the sequence of umph effects
                 _constructedSequence = new Sequence();
                 foreach (var effect in _effects)
                 {
+                    var effectInstance = effect.ConstructEffect();
+                    _effectInstances.Add(effectInstance);
                     if (effect.IsParallel)
                     {
-                        _constructedSequence.Parallel(effect.ConstructEffect(), effect.Delay);
+                        _constructedSequence.Parallel(effectInstance, effect.Delay);
                     }
                     else
                     {
-                        _constructedSequence.Append(effect.ConstructEffect(), effect.Delay);
+                        _constructedSequence.Append(effectInstance, effect.Delay);
                     }
                 }
             }
@@ -158,6 +163,14 @@ namespace Umph.Core
                 _constructedSequence.Pause();
                 _constructedSequence.Reset();
             }
+        }
+
+        public IEffect GetEffect(int index)
+        {
+            if (index < 0 || _effectInstances.Count <= index)
+                return null;
+
+            return _effectInstances[index];
         }
     }
 }

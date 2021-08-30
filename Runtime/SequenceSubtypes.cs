@@ -85,7 +85,8 @@ namespace Umph.Core
                 var isComplete = true;
                 foreach (var subeffect in Effects)
                 {
-                    isComplete = isComplete && subeffect.Update(deltaTime);
+                    var subEffectIsComplete = subeffect.Update(deltaTime);
+                    isComplete = isComplete && subEffectIsComplete;
                 }
                 return isComplete;
             }
@@ -158,11 +159,9 @@ namespace Umph.Core
                 if (DelayRemaining > 0f)
                 {
                     DelayRemaining -= deltaTime;
-                
+
                     if (DelayRemaining <= 0f)
-                    {
                         Effect.Play();
-                    }
                 }
                 else if (Effect.RequiresUpdates)
                 {
