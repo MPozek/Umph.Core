@@ -187,7 +187,7 @@ namespace Umph.Editor
 
             var type = _subtypeCache.GetSubtypeAt(typeIndex);
             var instance = (UmphComponentEffect) Activator.CreateInstance(type);
-            instance.EDITOR_Initialize(((Component)target).gameObject);
+            instance.EDITOR_Initialize(((Component)target).gameObject, _componentDisplayData[typeIndex].Name);
 
             _effectListProperty.GetArrayElementAtIndex(index).managedReferenceValue = instance;
 
@@ -271,7 +271,7 @@ namespace Umph.Editor
 
                 var managedType = FindManagedTypeFromName(property.managedReferenceFullTypename);
                 var typeIndex = _subtypeCache.GetTypeIndex(managedType);
-                EditorGUI.PropertyField(rect, property, new GUIContent(_componentDisplayData[typeIndex].Name), true);
+                EditorGUI.PropertyField(rect, property, new GUIContent(property.FindPropertyRelative("_name").stringValue), true);
             }
         }
 
