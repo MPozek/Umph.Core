@@ -19,5 +19,7 @@
 #endif
 
         public abstract IEffect ConstructEffect();
+
+        public UmphComponentEffect Clone() => (UmphComponentEffect)MemberwiseClone();
     }
 }

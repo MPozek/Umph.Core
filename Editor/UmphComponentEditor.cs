@@ -7,6 +7,7 @@ using System;
 using Umph.Core;
 using UnityEditor.IMGUI.Controls;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace Umph.Editor
 {
@@ -23,6 +24,7 @@ namespace Umph.Editor
 
         private UmphComponentMenu[] _componentDisplayData;
 
+        private int _lastCheckedElementCount;
         private int _deleteElementIndex = -1;
         private SubtypeCache _subtypeCache;
 
@@ -31,7 +33,8 @@ namespace Umph.Editor
             _target = (UmphComponent) target;
 
             _effectListProperty = serializedObject.FindProperty("_effects");
-            
+            _lastCheckedElementCount = _effectListProperty.arraySize;
+
             _listDrawer = new ReorderableList(serializedObject, _effectListProperty);
 
             InitializeSubtypeCache();
@@ -42,13 +45,41 @@ namespace Umph.Editor
 
             _listDrawer.elementHeightCallback = GetListElementHeight;
 
-            _listDrawer.drawElementBackgroundCallback += DrawListElementBackground;
+            _listDrawer.drawElementBackgroundCallback = DrawListElementBackground;
 
             _listDrawer.drawElementCallback = DrawListElement;
 
             _listDrawer.displayAdd = true;
             _listDrawer.onAddDropdownCallback = (rect, list) => _typeSelectMenu.Show(_listRect);
             _listDrawer.displayRemove = false;
+        }
+
+        private void OnListChanged(ReorderableList list)
+        {
+            // go through all elements, if one of the elements is referencing the same class as another
+            // deep clone that one
+            // this happens when you right click -> duplicate
+            var effectList = (IList<UmphComponentEffect>)typeof(UmphComponent)
+                .GetField("_effects", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .GetValue(target);
+
+            var closedSet = new HashSet<UmphComponentEffect>();
+            var newInstances = new List<(int, UmphComponentEffect)>();
+
+            for (int i = 0; i < effectList.Count; i++)
+            {
+                UmphComponentEffect compEffect = effectList[i];
+                if (!closedSet.Add(compEffect))
+                {
+                    newInstances.Add((i, compEffect.Clone()));
+                }
+            }
+
+            foreach (var (index, instance) in newInstances)
+            {
+                list.serializedProperty.GetArrayElementAtIndex(index).managedReferenceValue = instance;
+            }
+            list.serializedProperty.serializedObject.ApplyModifiedProperties();
         }
 
         private void InitializeSubtypeCache()
@@ -105,6 +136,12 @@ namespace Umph.Editor
 
                     _target.Initialize(true);
                 }
+            }
+
+            if (_lastCheckedElementCount != _effectListProperty.arraySize)
+            {
+                _lastCheckedElementCount = _effectListProperty.arraySize;
+                OnListChanged(_listDrawer);
             }
         }
 
